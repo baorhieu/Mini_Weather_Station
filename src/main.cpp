@@ -3,6 +3,20 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP085_U.h>
 #include <DHT.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
+const char* mqtt_server = "broker.hivemq.com";
+const int mqtt_port = 1883;
+const char* temperature_topic = "/amc/ss2026/group3/am2302/temperature";
+const char* humidity_topic = "/amc/ss2026/group3/am2302/humidity";
+const char* pressure_topic = "/amc/ss2026/group3/bmp180/pressure";
+const char* light_topic = "/amc/ss2026/group3/light/raw";
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+
+const char* ssid = "iPhone";
+const char* password = "AYASHA07";
 
 // -----------------------------
 // BMP180
@@ -24,6 +38,30 @@ bool bmpWorking = false;
 void setup() {
 
     Serial.begin(115200);
+    Serial.println("Connecting to WiFi...");
+
+WiFi.begin(ssid, password);
+
+while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+}
+
+Serial.println();
+Serial.println("WiFi connected!");
+
+Serial.print("IP address: ");
+Serial.println(WiFi.localIP());
+client.setServer(mqtt_server, mqtt_port);
+
+Serial.println("Connecting to MQTT...");
+
+if (client.connect("ESP32_WeatherStation")) {
+    Serial.println("MQTT connected!");
+} else {
+    Serial.print("MQTT connection failed, state: ");
+    Serial.println(client.state());
+}
 
     // Start I2C
     // SDA = GPIO 21
@@ -51,7 +89,7 @@ void setup() {
 
 
 void loop() {
-
+ client.loop();
     // ===================================
     // BMP180
     // ===================================
@@ -66,6 +104,13 @@ void loop() {
             Serial.print("Pressure: ");
             Serial.print(event.pressure);
             Serial.println(" hPa");
+            char pressureMessage[16];
+snprintf(pressureMessage, sizeof(pressureMessage), "%.2f", event.pressure);
+
+client.publish(pressure_topic, pressureMessage);
+
+Serial.print("Published pressure to MQTT: ");
+Serial.println(pressureMessage);
 
             float bmpTemperature;
             bmp.getTemperature(&bmpTemperature);
@@ -100,10 +145,25 @@ void loop() {
         Serial.print("AM2302 Temperature: ");
         Serial.print(dhtTemperature);
         Serial.println(" C");
+        char tempMessage[16];
+snprintf(tempMessage, sizeof(tempMessage), "%.2f", dhtTemperature);
+
+client.publish(temperature_topic, tempMessage);
+
+Serial.print("Published temperature to MQTT: ");
+Serial.println(tempMessage);
+
 
         Serial.print("Humidity: ");
         Serial.print(humidity);
         Serial.println(" %");
+        char humidityMessage[16];
+snprintf(humidityMessage, sizeof(humidityMessage), "%.2f", humidity);
+
+client.publish(humidity_topic, humidityMessage);
+
+Serial.print("Published humidity to MQTT: ");
+Serial.println(humidityMessage);
     }
 
 
@@ -112,6 +172,13 @@ void loop() {
 
 Serial.print("Light raw value: ");
 Serial.println(lightValue);
+char lightMessage[16];
+snprintf(lightMessage, sizeof(lightMessage), "%d", lightValue);
+
+client.publish(light_topic, lightMessage);
+
+Serial.print("Published light to MQTT: ");
+Serial.println(lightMessage);
 
     // AM2302 needs time between measurements
     delay(2500);
