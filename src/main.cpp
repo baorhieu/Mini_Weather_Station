@@ -28,7 +28,7 @@ Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
 // -----------------------------
 // AM2302 / DHT22
 // -----------------------------
-#define DHT_PIN 27
+#define DHT_PIN 19
 #define DHT_TYPE DHT22
 #define LIGHT_PIN 34
 
